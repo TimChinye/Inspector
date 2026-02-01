@@ -393,6 +393,8 @@ button.search-toggle.active {
 
 .styled-range {
     -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
     width: 100%;
     height: 4px;
     background: var(--border-subtle);
@@ -857,10 +859,6 @@ input:checked + .slider:before {
     border-top-right-radius: var(--radius-sm);
     border-bottom-right-radius: var(--radius-sm);
     border-left: 1px solid var(--border-subtle);
-}
-
-.btn-group .btn-middle {
-    /* Square */
 }
 
 .btn-group:has(.btn-secondary:hover) {
