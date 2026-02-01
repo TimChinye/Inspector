@@ -40,6 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessageText = document.getElementById('error-message-text');
     const errorGifContainer = document.getElementById('error-gif-container');
     const closeErrorBtn = document.getElementById('close-error-btn');
+    const retryErrorBtn = document.getElementById('retry-error-btn');
+    const openDriveErrorBtn = document.getElementById('open-drive-error-btn');
 
     // Confirm Modal
     const confirmModal = document.getElementById('confirm-modal');
@@ -109,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Confirm Modal State
     let onConfirmAction = null;
     let onCancelAction = null;
+    let onRetryAction = null;
 
     // --- Code Theme Data ---
     const THEMES = [{
@@ -956,9 +959,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Fetch failed", err);
                 hideLoading();
                 if (err.message === "Private File / HTML content") {
-                    showError("Access Denied", "This file appears to be private.", true);
+                    showError("Access Denied", "This file appears to be private.", true, () => fetchDriveFile(id), id);
                 } else {
-                    showError("Network Error", "Failed to fetch file. CodeTabs proxy might be down or blocked.");
+                    showError("Network Error", "Failed to fetch file. CodeTabs proxy might be down or blocked.", false, () => fetchDriveFile(id), id);
                 }
             });
     }
@@ -1037,14 +1040,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Error Modal Logic
     closeErrorBtn.addEventListener('click', () => errorModal.classList.add('hidden'));
+    retryErrorBtn.addEventListener('click', () => {
+        if (onRetryAction) {
+            errorModal.classList.add('hidden');
+            onRetryAction();
+        }
+    });
+
     errorModal.addEventListener('click', (e) => {
         if (e.target === errorModal) errorModal.classList.add('hidden');
     });
 
-    function showError(title, message, showGif = false) {
+    function showError(title, message, showGif = false, retryCallback = null, fileId = null) {
         errorModal.querySelector('.error-header span').textContent = title;
         errorMessageText.textContent = message;
         errorGifContainer.classList.toggle('hidden', !showGif);
+        
+        onRetryAction = retryCallback;
+        if (retryCallback) {
+            retryErrorBtn.classList.remove('hidden');
+        } else {
+            retryErrorBtn.classList.add('hidden');
+        }
+
+        if (fileId) {
+            openDriveErrorBtn.href = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
+            openDriveErrorBtn.classList.remove('hidden');
+        } else {
+            openDriveErrorBtn.classList.add('hidden');
+        }
+
         errorModal.classList.remove('hidden');
     }
 
@@ -1489,9 +1514,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (err.name === 'AbortError') return;
             console.error("Fetch failed", err);
             if (err.message === "Private File / HTML response") {
-                showError("Access Denied", "This file is private. You can open it in Drive to check permissions.", true);
+                showError("Access Denied", "This file is private. You can open it in Drive to check permissions.", true, () => fetchAndDisplayDriveFileContent(driveId), driveId);
             } else {
-                showError("Fetch Error", "Failed to fetch file content from Google Drive via the proxy.");
+                showError("Fetch Error", "Failed to fetch file content from Google Drive via the proxy.", false, () => fetchAndDisplayDriveFileContent(driveId), driveId);
             }
         } finally {
             hideLoading();
