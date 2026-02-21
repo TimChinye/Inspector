@@ -61,13 +61,15 @@ export function parseConversation(rawJson) {
                     text: text,
                     hasMedia: hasMedia,
                     mediaCount: mediaCount,
-                    mediaTypes: mediaTypes
+                    mediaTypes: mediaTypes,
+                    createTime: chunk.createTime
                 });
             }
         }
     }
     
-    return { data, prompts };
+    const pendingInputs = data.pendingInputs || [];
+    return { data, prompts, pendingInputs };
 }
 
 function isMediaChunk(chunk) {

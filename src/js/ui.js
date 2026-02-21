@@ -25,6 +25,52 @@ export function setCurrentFileRecordId(id) {
     currentFileRecordId = id;
 }
 
+function formatMessageTime(isoString) {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return "";
+
+    const now = new Date();
+    const format = prefs.timeFormat || 'default';
+
+    if (format === 'relative') {
+        const diff = Math.floor((now - date) / 1000);
+        if (diff < 0) return 'future';
+        if (diff < 60) return 'just now';
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+        return `${Math.floor(diff / 86400)}d ago`;
+    }
+
+    if (format === 'full') return date.toISOString();
+
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const mins = date.getMinutes().toString().padStart(2, '0');
+
+    const showYear = year !== now.getFullYear();
+
+    if (format === '12h') {
+        let h = date.getHours();
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12;
+        h = h ? h : 12;
+        const timeStr = `${h.toString().padStart(2, '0')}:${mins} ${ampm}`;
+        return `${month}/${day}${showYear ? '/' + year : ''} ${timeStr}`;
+    }
+
+    if (format === '24h') {
+        return `${year}-${month}-${day} ${hours}:${mins}`;
+    }
+
+    // Default: mm dd, hh:mm
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthName = months[date.getMonth()];
+    return `${monthName} ${day}${showYear ? ', ' + year : ''}, ${hours}:${mins}`;
+}
+
 function getExtensionFromMime(mime) {
     if (!mime || mime === 'application/octet-stream' || mime === 'text/plain') {
         // Best guess based on common ambiguous types
@@ -117,6 +163,7 @@ export function initAllUI() {
         initHistoryUI();
         initNavUI();
         initCodeThemeUI();
+        initTimeFormatUI();
         initModals();
     } catch (e) {
         console.error("Critical Initialization Error:", e);
@@ -161,7 +208,7 @@ function initSettingsUI() {
         thinkingToggle.checked = !prefs.collapseThoughts; 
     }
 
-    // Metadata Toggle (Inverted Logic)
+    // Metadata Toggle
     const metaToggle = document.getElementById('metadataCollapseToggle');
     if (metaToggle) {
         metaToggle.checked = !prefs.collapseMetadataByDefault;
@@ -470,10 +517,64 @@ function initCodeThemeUI() {
     });
 
     document.addEventListener('click', (e) => {
-        if (!wrapper.contains(e.target) && !previewContainer.contains(e.target) && !previewContainer.contains(e.target)) {
+        if (!wrapper.contains(e.target) && !previewContainer.contains(e.target)) {
             wrapper.classList.remove('open');
             hideThemePreview();
         }
+    });
+}
+
+function initTimeFormatUI() {
+    const wrapper = document.getElementById('timeFormatWrapper');
+    const options = document.getElementById('timeFormatOptions');
+    const currentNameEl = document.getElementById('currentTimeFormatName');
+    const trigger = document.getElementById('timeFormatTrigger');
+
+    if (!wrapper || !options || !currentNameEl || !trigger) return;
+
+    const names = {
+        'default': 'Default',
+        '12h': '12-hour',
+        '24h': '24-hour',
+        'relative': 'Relative',
+        'full': 'Full (ISO)'
+    };
+
+    function applyTimeFormat(val) {
+        prefs.timeFormat = val;
+        currentNameEl.textContent = names[val] || 'Default';
+        localStorage.setItem('timeFormat', val);
+
+        Array.from(options.children).forEach(child => {
+            child.classList.toggle('selected', child.dataset.value === val);
+        });
+
+        // Re-render if conversation is loaded
+        if (_appState && _appState.parsedData) {
+            if (prefs.isScrollMode) {
+                 renderFullConversation(_appState.parsedData, _appState.currentPrompts, _appState.pendingInputs);
+            } else {
+                 renderConversation(_appState.parsedData, _appState.focusIndex, _appState.currentPrompts, _appState.pendingInputs);
+            }
+        }
+    }
+
+    currentNameEl.textContent = names[prefs.timeFormat] || 'Default';
+    Array.from(options.children).forEach(child => {
+        child.classList.toggle('selected', child.dataset.value === prefs.timeFormat);
+        child.addEventListener('click', () => {
+            applyTimeFormat(child.dataset.value);
+            wrapper.classList.remove('open');
+        });
+    });
+
+    trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        wrapper.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!wrapper.contains(e.target)) wrapper.classList.remove('open');
     });
 }
 
@@ -562,6 +663,7 @@ function initModals() {
             const target = document.getElementById(btn.dataset.tab);
             if(target) target.classList.add('active');
             
+            console.log("2-Click")
             if(els.metaBody.classList.contains('collapsed')) {
                 els.metaBody.classList.remove('collapsed');
                 els.collapseBtn.querySelector('i').className = 'ph ph-caret-up';
@@ -590,19 +692,12 @@ function initModals() {
             }
         });
     }
-
-    if (els.collapseBtn) {
-        els.collapseBtn.addEventListener('click', () => {
-            els.metaBody.classList.toggle('collapsed');
-            const icon = els.collapseBtn.querySelector('i');
-            icon.className = els.metaBody.classList.contains('collapsed') ? 'ph ph-caret-down' : 'ph ph-caret-up';
-        });
-    }
     
     // Metadata Header Click to Toggle
     const metaHeader = document.getElementById('metadata-header');
     if (metaHeader) {
         metaHeader.addEventListener('click', (e) => {
+            console.log("3-Click")
             if (e.target.closest('.tab-btn')) return;
             els.metaBody.classList.toggle('collapsed');
             const icon = els.collapseBtn.querySelector('i');
@@ -908,7 +1003,7 @@ export function renderMetadata(metaHtml) {
     document.getElementById('tab-citations').innerHTML = metaHtml.citesHtml;
     
     els.metaPanel.classList.remove('hidden');
-    els.metaBody.classList.toggle('collapsed', !prefs.collapseMetadataByDefault);
+    els.metaBody.classList.toggle('collapsed', prefs.collapseMetadataByDefault);
     els.collapseBtn.querySelector('i').className = prefs.collapseMetadataByDefault ? 'ph ph-caret-up' : 'ph ph-caret-down';
 }
 
@@ -1373,7 +1468,7 @@ function startHistoryRename(file, itemEl) {
 
 // --- Conversation Rendering ---
 
-export function renderConversation(parsedData, promptIndex, promptsList) {
+export function renderConversation(parsedData, promptIndex, promptsList, pendingInputs = []) {
     els.chatStream.innerHTML = '';
     els.chatStream.removeAttribute('data-view');
     setActiveSidebarItem(promptIndex);
@@ -1396,11 +1491,15 @@ export function renderConversation(parsedData, promptIndex, promptsList) {
         } else if (chunk.role === 'user') break;
     }
 
+    if (pendingInputs && pendingInputs.length > 0) {
+        renderPendingInputs(pendingInputs);
+    }
+
     postProcessCodeBlocks();
     els.scrollContainer.scrollTop = 0;
 }
 
-export function renderFullConversation(parsedData, promptsList) {
+export function renderFullConversation(parsedData, promptsList, pendingInputs = []) {
     els.chatStream.innerHTML = '<div class="full-history-header">Full Conversation History</div>';
     els.chatStream.setAttribute('data-view', 'full');
 
@@ -1440,6 +1539,10 @@ export function renderFullConversation(parsedData, promptsList) {
         els.chatStream.appendChild(createMessageElement(currentTurn, currentRole, id));
     }
 
+    if (pendingInputs && pendingInputs.length > 0) {
+        renderPendingInputs(pendingInputs);
+    }
+
     postProcessCodeBlocks();
     
     let observerIgnore = true;
@@ -1466,6 +1569,25 @@ export function renderFullConversation(parsedData, promptsList) {
     document.querySelectorAll('.message.role-user[id]').forEach(el => observer.observe(el));
 }
 
+function renderPendingInputs(pendingInputs) {
+    const container = document.createElement('div');
+    container.className = 'pending-inputs-container';
+
+    const header = document.createElement('div');
+    header.className = 'pending-header';
+    header.innerHTML = '<i class="ph ph-clock-counter-clockwise"></i> Pending Input';
+    container.appendChild(header);
+
+    pendingInputs.forEach(input => {
+        if (!input.text) return;
+        const msg = createMessageElement([input], input.role || 'user');
+        msg.classList.add('pending-msg');
+        container.appendChild(msg);
+    });
+
+    els.chatStream.appendChild(container);
+}
+
 function createMessageElement(chunks, role, id = null) {
     const wrapper = document.createElement('div');
     wrapper.className = `message role-${role}`;
@@ -1473,6 +1595,7 @@ function createMessageElement(chunks, role, id = null) {
 
     const mainChunk = chunks[0] || {};
     const isThought = mainChunk.isThought || false;
+    const createTime = mainChunk.createTime;
     
     // Check for media for Tooltip
     const hasMedia = chunks.some(c => c.inlineData || c.inlineImage || c.driveDocument || c.driveImage || c.driveVideo || c.driveAudio);
@@ -1490,7 +1613,28 @@ function createMessageElement(chunks, role, id = null) {
 
     const header = document.createElement('div');
     header.className = 'message-header';
-    header.innerHTML = isUser ? `${tokens} ${iconHtml}` : `${iconHtml} ${tokens} ${expandIcon}`;
+
+    const labelGroup = document.createElement('div');
+    labelGroup.className = 'message-label-group';
+    labelGroup.innerHTML = isUser ? `${tokens} ${iconHtml}` : `${iconHtml} ${tokens} ${expandIcon}`;
+
+    header.appendChild(labelGroup);
+
+    if (createTime) {
+        const timeSpan = document.createElement('div');
+        timeSpan.className = 'message-time';
+        timeSpan.textContent = formatMessageTime(createTime);
+        timeSpan.title = new Date(createTime).toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            fractionalSecondDigits: 3
+        });
+        header.prepend(timeSpan);
+    }
 
     if (isThought) {
         header.onclick = () => {
