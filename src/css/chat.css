@@ -15,8 +15,7 @@
 
 .message-header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
     gap: 8px;
     font-size: 12px;
     font-weight: 600;
@@ -29,13 +28,17 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    user-select: none;
+}
+
+.message-label-group:hover {
+    opacity: 0.8;
 }
 
 .message-time {
     font-size: 10px;
     font-weight: 400;
     opacity: 0.6;
-    cursor: help;
 }
 
 .message-bubble {
@@ -61,7 +64,7 @@
 }
 
 .role-user .message-header {
-    flex-direction: row-reverse;
+    align-items: flex-end;
 }
 
 /* User Content Wrapper: Holds all message parts on the right */
@@ -175,13 +178,8 @@
     font-style: italic;
 }
 
-.thought-message .message-header {
+.thought-message .message-label-group {
     cursor: pointer;
-    user-select: none;
-}
-
-.thought-message .message-header:hover {
-    opacity: 0.8;
 }
 
 .thought-icon-rotate {

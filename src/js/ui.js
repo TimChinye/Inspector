@@ -208,7 +208,7 @@ function initSettingsUI() {
         thinkingToggle.checked = !prefs.collapseThoughts; 
     }
 
-    // Metadata Toggle (Inverted Logic)
+    // Metadata Toggle
     const metaToggle = document.getElementById('metadataCollapseToggle');
     if (metaToggle) {
         metaToggle.checked = !prefs.collapseMetadataByDefault;
@@ -663,6 +663,7 @@ function initModals() {
             const target = document.getElementById(btn.dataset.tab);
             if(target) target.classList.add('active');
             
+            console.log("2-Click")
             if(els.metaBody.classList.contains('collapsed')) {
                 els.metaBody.classList.remove('collapsed');
                 els.collapseBtn.querySelector('i').className = 'ph ph-caret-up';
@@ -691,19 +692,12 @@ function initModals() {
             }
         });
     }
-
-    if (els.collapseBtn) {
-        els.collapseBtn.addEventListener('click', () => {
-            els.metaBody.classList.toggle('collapsed');
-            const icon = els.collapseBtn.querySelector('i');
-            icon.className = els.metaBody.classList.contains('collapsed') ? 'ph ph-caret-down' : 'ph ph-caret-up';
-        });
-    }
     
     // Metadata Header Click to Toggle
     const metaHeader = document.getElementById('metadata-header');
     if (metaHeader) {
         metaHeader.addEventListener('click', (e) => {
+            console.log("3-Click")
             if (e.target.closest('.tab-btn')) return;
             els.metaBody.classList.toggle('collapsed');
             const icon = els.collapseBtn.querySelector('i');
@@ -1009,7 +1003,7 @@ export function renderMetadata(metaHtml) {
     document.getElementById('tab-citations').innerHTML = metaHtml.citesHtml;
     
     els.metaPanel.classList.remove('hidden');
-    els.metaBody.classList.toggle('collapsed', !prefs.collapseMetadataByDefault);
+    els.metaBody.classList.toggle('collapsed', prefs.collapseMetadataByDefault);
     els.collapseBtn.querySelector('i').className = prefs.collapseMetadataByDefault ? 'ph ph-caret-up' : 'ph ph-caret-down';
 }
 
@@ -1627,7 +1621,7 @@ function createMessageElement(chunks, role, id = null) {
     header.appendChild(labelGroup);
 
     if (createTime) {
-        const timeSpan = document.createElement('span');
+        const timeSpan = document.createElement('div');
         timeSpan.className = 'message-time';
         timeSpan.textContent = formatMessageTime(createTime);
         timeSpan.title = new Date(createTime).toLocaleString(undefined, {
@@ -1639,7 +1633,7 @@ function createMessageElement(chunks, role, id = null) {
             second: '2-digit',
             fractionalSecondDigits: 3
         });
-        header.appendChild(timeSpan);
+        header.prepend(timeSpan);
     }
 
     if (isThought) {

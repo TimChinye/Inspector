@@ -45,7 +45,6 @@
     font-size: 13px;
     line-height: 1.6;
     color: var(--text-main);
-    overflow-x: auto;
     display: block;
 }
 
