@@ -7,7 +7,8 @@ export const prefs = {
     isWrapCode: false,
     autoRestoreContent: true,
     contentWidth: 800,
-    codeTheme: 'androidstudio'
+    codeTheme: 'androidstudio',
+    timeFormat: 'default'
 };
 
 export const CODE_THEMES = [
@@ -55,6 +56,9 @@ export function initPreferences() {
 
     const savedCodeTheme = localStorage.getItem('codeTheme');
     prefs.codeTheme = savedCodeTheme || 'androidstudio';
+
+    const savedTimeFormat = localStorage.getItem('timeFormat');
+    prefs.timeFormat = savedTimeFormat || 'default';
 
     // Apply basic CSS states based on prefs
     applyGlobalStyles();

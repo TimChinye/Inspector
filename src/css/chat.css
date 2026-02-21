@@ -16,11 +16,26 @@
 .message-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
     font-size: 12px;
     font-weight: 600;
     margin-bottom: 8px;
     color: var(--text-muted);
+    width: 100%;
+}
+
+.message-label-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.message-time {
+    font-size: 10px;
+    font-weight: 400;
+    opacity: 0.6;
+    cursor: help;
 }
 
 .message-bubble {
@@ -123,6 +138,33 @@
 .role-model .message-header i {
     color: var(--accent-primary);
     font-size: 16px;
+}
+
+/* --- Pending Inputs --- */
+.pending-inputs-container {
+    margin-top: 40px;
+    border-top: 2px dashed var(--border-subtle);
+    padding-top: 20px;
+    opacity: 0.8;
+}
+
+.pending-header {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pending-msg {
+    filter: grayscale(0.5);
+}
+
+.pending-msg .message-bubble {
+    border-style: dashed !important;
 }
 
 .thought-message .message-bubble {

@@ -16,7 +16,8 @@ const state = {
     isScrollMode: false,
     focusIndex: 0,
     isDeepSearch: false,
-    extractedMedia: []
+    extractedMedia: [],
+    pendingInputs: []
 };
 
 
@@ -133,6 +134,7 @@ function handleText(text, name, driveId = null, startIndex = null) {
         const result = parseConversation(text);
         state.parsedData = result.data;
         state.currentPrompts = result.prompts;
+        state.pendingInputs = result.pendingInputs;
         state.currentFileName = name;
         state.currentFileId = driveId;
         state.rawContent = text;
@@ -167,6 +169,7 @@ function loadFileFromRecord(record, startIndex = null) {
     // Re-parse to get prompts structure if not saved
     const result = parseConversation(state.rawContent);
     state.currentPrompts = result.prompts;
+    state.pendingInputs = result.pendingInputs;
     
     processAndRender(startIndex);
     loadHistory();
@@ -240,7 +243,13 @@ function handlePromptClick(index) {
         } else {
             // If in scroll mode but not rendered (e.g. switch just happened), render full
             renderCompleteDialog();
-            setTimeout(() => handlePromptClick(index), 100);
+            setTimeout(() => {
+                 const targetAfterRender = document.getElementById(`msg-user-${index}`);
+                 if (targetAfterRender) {
+                     targetAfterRender.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                     UI.setActiveSidebarItem(index);
+                 }
+            }, 100);
         }
     } else {
         renderChat(index);
@@ -250,7 +259,7 @@ function handlePromptClick(index) {
 
 function renderChat(index) {
     state.focusIndex = index;
-    UI.renderConversation(state.parsedData, index, state.currentPrompts);
+    UI.renderConversation(state.parsedData, index, state.currentPrompts, state.pendingInputs);
     if (prefs.isScrollMode) {
         updateUrl(state.currentFileId, state.currentFileRecordId, null, index);
     } else {
@@ -259,7 +268,7 @@ function renderChat(index) {
 }
 
 function renderCompleteDialog() {
-    UI.renderFullConversation(state.parsedData, state.currentPrompts);
+    UI.renderFullConversation(state.parsedData, state.currentPrompts, state.pendingInputs);
 }
 
 // --- Sidebar & History ---
@@ -322,6 +331,7 @@ function resetAppState() {
     state.currentFileRecordId = null;
     state.rawContent = null;
     state.extractedMedia = [];
+    state.pendingInputs = [];
 
     updateUrl(null);
     document.title = "Inspector - Google AI Studio Viewer";
@@ -833,8 +843,8 @@ function setupEventListeners() {
                  const oldView = chatStream.getAttribute('data-view');
                  UI.renderFullConversation(state.parsedData, state.currentPrompts);
                  action();
-                 if (oldView === 'full') UI.renderFullConversation(state.parsedData, state.currentPrompts);
-                 else UI.renderConversation(state.parsedData, state.focusIndex, state.currentPrompts);
+                 if (oldView === 'full') UI.renderFullConversation(state.parsedData, state.currentPrompts, state.pendingInputs);
+                 else UI.renderConversation(state.parsedData, state.focusIndex, state.currentPrompts, state.pendingInputs);
             }
         } else if (format === 'image') {
             const chatStream = document.getElementById('chat-stream');
@@ -884,7 +894,7 @@ function setupEventListeners() {
 
             if (prefs.isScrollMode) {
                 const targetIdx = state.focusIndex;
-                renderCompleteDialog();
+                UI.renderFullConversation(state.parsedData, state.currentPrompts, state.pendingInputs);
                 updateUrl(state.currentFileId, state.currentFileRecordId, null, targetIdx);
 
                 // Use multiple attempts to ensure scroll happens after layout
