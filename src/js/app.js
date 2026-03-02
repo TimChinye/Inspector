@@ -643,6 +643,12 @@ function setupEventListeners() {
     };
 
     window.addEventListener('dragover', (e) => {
+        const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
+        if (isInput) {
+            document.body.style.opacity = '1';
+            return;
+        }
+
         const isFileLoaded = !!state.parsedData;
         const inLoadArea = isDropInLoadArea(e);
         const loadGroup = document.getElementById('loadGroup');
@@ -668,6 +674,14 @@ function setupEventListeners() {
     });
 
     window.addEventListener('drop', (e) => {
+        const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
+        if (isInput) {
+            document.body.style.opacity = '1';
+            const loadGroup = document.getElementById('loadGroup');
+            if (loadGroup) loadGroup.classList.remove('drag-active');
+            return;
+        }
+
         const isFileLoaded = !!state.parsedData;
         const inLoadArea = isDropInLoadArea(e);
         const loadGroup = document.getElementById('loadGroup');
