@@ -176,15 +176,19 @@ function loadFileFromRecord(record, startIndex = null) {
     UI.hideLoading();
 }
 
-function loadFromDrive(id, startIndex = null) {
-    UI.showLoading();
-    updateUrl(id);
-    state.currentFileId = id;
+function loadFromDrive(id, startIndex = null, isSilent = false) {
+    if (!isSilent) UI.showLoading();
+
     fetchDriveFile(id, {
         onSuccess: (text) => {
+            if (isSilent) UI.showLoading(); // Show it now that we know it's valid
+            updateUrl(id);
+            state.currentFileId = id;
             handleText(text, `Drive File (${id})`, id, startIndex);
         },
         onError: (err) => {
+            if (isSilent) return; // Fail silently for raw ID pastes that don't work
+
             UI.hideLoading();
             if (err.message === "Private File / HTML content") {
                 UI.showError("Access Denied", "This file appears to be private.", true, () => loadFromDrive(id, startIndex), id);
@@ -687,6 +691,9 @@ function setupEventListeners() {
 
     // Paste
     window.addEventListener('paste', async (e) => {
+        const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
+        if (isInput) return;
+
         if (!state.parsedData && e.clipboardData) {
             e.preventDefault();
             const text = e.clipboardData.getData('text');
@@ -705,10 +712,11 @@ function setupEventListeners() {
 
     function handlePaste(text) {
         const trimmed = text.trim();
-        if (trimmed.includes('aistudio.google.com') || trimmed.includes('/prompts/') || trimmed.includes('/app/prompts/') || trimmed.includes('/file/d/')) {
-            const id = parseDriveLink(trimmed);
-            if(id) loadFromDrive(id);
-            else UI.showError("Link Error", "Could not parse ID from link.");
+        const id = parseDriveLink(trimmed);
+
+        if (id) {
+            // It's a link or a raw ID
+            loadFromDrive(id, null, trimmed === id); // third param is 'isSilent'
         } else {
             updateUrl(null);
             handleText(trimmed, "Pasted content", null);
