@@ -176,7 +176,7 @@ function loadFileFromRecord(record, startIndex = null) {
     UI.hideLoading();
 }
 
-function loadFromDrive(id, startIndex = null, isSilent = false) {
+function loadFromDrive(id, startIndex = null, isSilent = false, fallbackText = null) {
     if (!isSilent) UI.showLoading();
 
     fetchDriveFile(id, {
@@ -187,7 +187,14 @@ function loadFromDrive(id, startIndex = null, isSilent = false) {
             handleText(text, `Drive File (${id})`, id, startIndex);
         },
         onError: (err) => {
-            if (isSilent) return; // Fail silently for raw ID pastes that don't work
+            if (isSilent) {
+                // If it was a silent attempt and we have fallback text, treat as regular text
+                if (fallbackText) {
+                    updateUrl(null);
+                    handleText(fallbackText, "Pasted content", null);
+                }
+                return;
+            }
 
             UI.hideLoading();
             if (err.message === "Private File / HTML content") {
@@ -681,9 +688,13 @@ function setupEventListeners() {
             const text = e.dataTransfer.getData('text');
             if (text) {
                 const trimmed = text.trim();
-                if (trimmed.includes('aistudio.google.com') || trimmed.includes('/prompts/') || trimmed.includes('/app/prompts/') || trimmed.includes('/file/d/')) {
-                    const id = parseDriveLink(trimmed);
-                    if (id) loadFromDrive(id);
+                const id = parseDriveLink(trimmed);
+                if (id) {
+                    const isSilent = (trimmed === id);
+                    loadFromDrive(id, null, isSilent, isSilent ? trimmed : null);
+                } else {
+                    updateUrl(null);
+                    handleText(trimmed, "Dropped content", null);
                 }
             }
         }
@@ -716,7 +727,8 @@ function setupEventListeners() {
 
         if (id) {
             // It's a link or a raw ID
-            loadFromDrive(id, null, trimmed === id); // third param is 'isSilent'
+            const isSilent = (trimmed === id);
+            loadFromDrive(id, null, isSilent, isSilent ? trimmed : null);
         } else {
             updateUrl(null);
             handleText(trimmed, "Pasted content", null);
@@ -949,6 +961,13 @@ function setupEventListeners() {
         cancelFetch();
         window.location.reload();
     });
+
+    const logo = document.querySelector('#sidebar .logo-img');
+    if (logo) {
+        logo.addEventListener('click', () => {
+            resetAppState();
+        });
+    }
 }
 
 function setupThemeLogic() {

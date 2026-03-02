@@ -28,6 +28,7 @@
     width: 32px;
     height: 32px;
     object-fit: contain;
+    cursor: pointer;
 }
 
 .brand-text h1 {
