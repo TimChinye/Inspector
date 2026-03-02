@@ -176,15 +176,26 @@ function loadFileFromRecord(record, startIndex = null) {
     UI.hideLoading();
 }
 
-function loadFromDrive(id, startIndex = null) {
-    UI.showLoading();
-    updateUrl(id);
-    state.currentFileId = id;
+function loadFromDrive(id, startIndex = null, isSilent = false, fallbackText = null) {
+    if (!isSilent) UI.showLoading();
+
     fetchDriveFile(id, {
         onSuccess: (text) => {
+            if (isSilent) UI.showLoading(); // Show it now that we know it's valid
+            updateUrl(id);
+            state.currentFileId = id;
             handleText(text, `Drive File (${id})`, id, startIndex);
         },
         onError: (err) => {
+            if (isSilent) {
+                // If it was a silent attempt and we have fallback text, treat as regular text
+                if (fallbackText) {
+                    updateUrl(null);
+                    handleText(fallbackText, "Pasted content", null);
+                }
+                return;
+            }
+
             UI.hideLoading();
             if (err.message === "Private File / HTML content") {
                 UI.showError("Access Denied", "This file appears to be private.", true, () => loadFromDrive(id, startIndex), id);
@@ -632,6 +643,12 @@ function setupEventListeners() {
     };
 
     window.addEventListener('dragover', (e) => {
+        const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
+        if (isInput) {
+            document.body.style.opacity = '1';
+            return;
+        }
+
         const isFileLoaded = !!state.parsedData;
         const inLoadArea = isDropInLoadArea(e);
         const loadGroup = document.getElementById('loadGroup');
@@ -657,6 +674,14 @@ function setupEventListeners() {
     });
 
     window.addEventListener('drop', (e) => {
+        const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
+        if (isInput) {
+            document.body.style.opacity = '1';
+            const loadGroup = document.getElementById('loadGroup');
+            if (loadGroup) loadGroup.classList.remove('drag-active');
+            return;
+        }
+
         const isFileLoaded = !!state.parsedData;
         const inLoadArea = isDropInLoadArea(e);
         const loadGroup = document.getElementById('loadGroup');
@@ -677,9 +702,13 @@ function setupEventListeners() {
             const text = e.dataTransfer.getData('text');
             if (text) {
                 const trimmed = text.trim();
-                if (trimmed.includes('aistudio.google.com') || trimmed.includes('/prompts/') || trimmed.includes('/app/prompts/') || trimmed.includes('/file/d/')) {
-                    const id = parseDriveLink(trimmed);
-                    if (id) loadFromDrive(id);
+                const id = parseDriveLink(trimmed);
+                if (id) {
+                    const isSilent = (trimmed === id);
+                    loadFromDrive(id, null, isSilent, isSilent ? trimmed : null);
+                } else {
+                    updateUrl(null);
+                    handleText(trimmed, "Dropped content", null);
                 }
             }
         }
@@ -687,6 +716,9 @@ function setupEventListeners() {
 
     // Paste
     window.addEventListener('paste', async (e) => {
+        const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
+        if (isInput) return;
+
         if (!state.parsedData && e.clipboardData) {
             e.preventDefault();
             const text = e.clipboardData.getData('text');
@@ -705,10 +737,12 @@ function setupEventListeners() {
 
     function handlePaste(text) {
         const trimmed = text.trim();
-        if (trimmed.includes('aistudio.google.com') || trimmed.includes('/prompts/') || trimmed.includes('/app/prompts/') || trimmed.includes('/file/d/')) {
-            const id = parseDriveLink(trimmed);
-            if(id) loadFromDrive(id);
-            else UI.showError("Link Error", "Could not parse ID from link.");
+        const id = parseDriveLink(trimmed);
+
+        if (id) {
+            // It's a link or a raw ID
+            const isSilent = (trimmed === id);
+            loadFromDrive(id, null, isSilent, isSilent ? trimmed : null);
         } else {
             updateUrl(null);
             handleText(trimmed, "Pasted content", null);
@@ -812,7 +846,13 @@ function setupEventListeners() {
     });
 
     document.addEventListener('click', (e) => {
-        if (!exportWidgetPopover.contains(e.target) && e.target !== exportWidgetBtn) {
+        // Link Popover click outside
+        if (!linkPopover.contains(e.target) && e.target !== linkBtn && !linkBtn.contains(e.target)) {
+            linkPopover.classList.add('hidden');
+        }
+
+        // Export Popover click outside
+        if (!exportWidgetPopover.contains(e.target) && e.target !== exportWidgetBtn && !exportWidgetBtn.contains(e.target)) {
             exportWidgetPopover.classList.add('hidden');
         }
     });
@@ -941,6 +981,13 @@ function setupEventListeners() {
         cancelFetch();
         window.location.reload();
     });
+
+    const logo = document.querySelector('#sidebar .logo-img');
+    if (logo) {
+        logo.addEventListener('click', () => {
+            resetAppState();
+        });
+    }
 }
 
 function setupThemeLogic() {
