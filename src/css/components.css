@@ -21,6 +21,13 @@
 .btn-primary:hover {
     opacity: 0.9;
     transform: translateY(-1px);
+
+    &:hover::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        bottom: -3px;
+    }
 }
 
 .btn-primary.btn-centered:hover {
