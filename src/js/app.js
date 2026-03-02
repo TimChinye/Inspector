@@ -846,7 +846,13 @@ function setupEventListeners() {
     });
 
     document.addEventListener('click', (e) => {
-        if (!exportWidgetPopover.contains(e.target) && e.target !== exportWidgetBtn) {
+        // Link Popover click outside
+        if (!linkPopover.contains(e.target) && e.target !== linkBtn && !linkBtn.contains(e.target)) {
+            linkPopover.classList.add('hidden');
+        }
+
+        // Export Popover click outside
+        if (!exportWidgetPopover.contains(e.target) && e.target !== exportWidgetBtn && !exportWidgetBtn.contains(e.target)) {
             exportWidgetPopover.classList.add('hidden');
         }
     });
