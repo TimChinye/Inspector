@@ -603,6 +603,7 @@ button.search-toggle.active {
     background: var(--bg-app);
     position: relative;
     transition: background-color 0.3s ease;
+    max-width: 100%;
 }
 
 .toolbar {
@@ -1049,10 +1050,11 @@ button.search-toggle.active {
 
     #scroll-container {
         padding: 0 16px 16px 16px;
+        scrollbar-width: none;
     }
 
     .user-content-wrapper {
-        max-width: 100%;
+        max-width: none;
     }
 
     #nav-widget {
@@ -1077,5 +1079,10 @@ button.search-toggle.active {
 
     #theme-preview-container {
         display: none !important;
+    }
+
+    .role-model .message-bubble {
+        padding-left: 0;
+        padding-right: 0;
     }
 }
