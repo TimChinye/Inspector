@@ -1477,17 +1477,19 @@ export function renderConversation(parsedData, promptIndex, promptsList, pending
     const allChunks = parsedData.chunkedPrompt.chunks;
 
     let userChunks = [];
+    let userChunkIndices = [];
     let i = userPrompt.originalIndex;
     while (i < allChunks.length && allChunks[i].role === 'user') {
         userChunks.push(allChunks[i]);
+        userChunkIndices.push(i);
         i++;
     }
-    els.chatStream.appendChild(createMessageElement(userChunks, 'user'));
+    els.chatStream.appendChild(createMessageElement(userChunks, 'user', null, userChunkIndices));
 
     for (; i < allChunks.length; i++) {
         const chunk = allChunks[i];
         if (chunk.role === 'model') {
-            els.chatStream.appendChild(createMessageElement([chunk], 'model'));
+            els.chatStream.appendChild(createMessageElement([chunk], 'model', null, [i]));
         } else if (chunk.role === 'user') break;
     }
 
@@ -1504,10 +1506,11 @@ export function renderFullConversation(parsedData, promptsList, pendingInputs = 
     els.chatStream.setAttribute('data-view', 'full');
 
     let currentTurn = [];
+    let currentTurnIndices = [];
     let currentRole = null;
     let userPromptCount = 0;
 
-    parsedData.chunkedPrompt.chunks.forEach((chunk) => {
+    parsedData.chunkedPrompt.chunks.forEach((chunk, idx) => {
         let shouldFlush = false;
 
         if (currentTurn.length > 0) {
@@ -1526,17 +1529,19 @@ export function renderFullConversation(parsedData, promptsList, pendingInputs = 
                 id = `msg-user-${userPromptCount}`;
                 userPromptCount++;
             }
-            els.chatStream.appendChild(createMessageElement(currentTurn, currentRole, id));
+            els.chatStream.appendChild(createMessageElement(currentTurn, currentRole, id, currentTurnIndices));
             currentTurn = [];
+            currentTurnIndices = [];
         }
         currentRole = chunk.role;
         currentTurn.push(chunk);
+        currentTurnIndices.push(idx);
     });
 
     if (currentTurn.length > 0) {
         let id = null;
         if (currentRole === 'user') id = `msg-user-${userPromptCount}`;
-        els.chatStream.appendChild(createMessageElement(currentTurn, currentRole, id));
+        els.chatStream.appendChild(createMessageElement(currentTurn, currentRole, id, currentTurnIndices));
     }
 
     if (pendingInputs && pendingInputs.length > 0) {
@@ -1588,10 +1593,13 @@ function renderPendingInputs(pendingInputs) {
     els.chatStream.appendChild(container);
 }
 
-function createMessageElement(chunks, role, id = null) {
+function createMessageElement(chunks, role, id = null, chunkIndices = null) {
     const wrapper = document.createElement('div');
     wrapper.className = `message role-${role}`;
     if (id) wrapper.id = id;
+    if (chunkIndices && chunkIndices.length > 0) {
+        wrapper.dataset.chunkIndices = chunkIndices.join(' ');
+    }
 
     const mainChunk = chunks[0] || {};
     const isThought = mainChunk.isThought || false;
@@ -2169,6 +2177,15 @@ export function renderMediaGallery(mediaItems, onDownload) {
 
         actions.appendChild(viewBtn);
 
+        const showInChatBtn = document.createElement('button');
+        showInChatBtn.className = 'btn btn-secondary btn-sm';
+        showInChatBtn.innerHTML = '<i class="ph ph-chat-text"></i> Show in chat';
+        showInChatBtn.onclick = (e) => {
+            e.stopPropagation();
+            scrollToChunk(item.index);
+        };
+        actions.appendChild(showInChatBtn);
+
         body.appendChild(info);
         body.appendChild(actions);
 
@@ -2248,6 +2265,51 @@ export function renderMediaGallery(mediaItems, onDownload) {
 
     els.mediaModal.classList.remove('hidden');
     updateButtons();
+}
+
+function scrollToChunk(chunkIndex) {
+    els.mediaModal.classList.add('hidden');
+
+    if (!_appState || !_appState.parsedData) return;
+
+    const prompts = _appState.currentPrompts || [];
+    let targetPromptIndex = -1;
+    for (let i = prompts.length - 1; i >= 0; i--) {
+        if (prompts[i].originalIndex <= chunkIndex) {
+            targetPromptIndex = i;
+            break;
+        }
+    }
+    if (targetPromptIndex < 0) return;
+
+    const isFullView = els.chatStream.getAttribute('data-view') === 'full';
+
+    if (!isFullView) {
+        if (typeof _renderConversation === 'function') {
+            _renderConversation(targetPromptIndex);
+        } else if (_renderConversation && typeof _renderConversation.onPromptClick === 'function') {
+            _renderConversation.onPromptClick(targetPromptIndex);
+        }
+    }
+
+    const doScroll = () => {
+        const msg = document.querySelector(`.message[data-chunk-indices~="${chunkIndex}"]`);
+        if (msg) {
+            msg.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            highlightElement(msg);
+        }
+    };
+
+    if (isFullView) {
+        doScroll();
+    } else {
+        setTimeout(doScroll, 100);
+    }
+}
+
+function highlightElement(el) {
+    document.querySelectorAll('.message-highlight').forEach(e => e.classList.remove('message-highlight'));
+    el.classList.add('message-highlight');
 }
 
 function postProcessCodeBlocks() {

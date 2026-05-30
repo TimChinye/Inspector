@@ -764,11 +764,6 @@ body.wrap-codeblocks #text-viewer-modal pre {
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.media-item-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-}
-
 .media-item-card.selected {
     border-color: var(--accent-primary);
     box-shadow: 0 0 0 2px var(--accent-primary);
@@ -837,6 +832,7 @@ body.wrap-codeblocks #text-viewer-modal pre {
 .media-card-actions {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
     justify-content: center;
 }
 
@@ -858,6 +854,16 @@ input[type="checkbox"].media-checkbox {
 
 .hidden {
     display: none !important;
+}
+
+/* Message Highlight */
+.message-highlight {
+    animation: msgHighlightFade 2s ease-out;
+}
+
+@keyframes msgHighlightFade {
+    0% { background-color: oklch(from var(--bg-app) calc(l / 0.9) c h); }
+    100% { background-color: transparent; outline: 2px solid transparent; }
 }
 
 /* Custom Checkbox Design */
