@@ -372,20 +372,17 @@ function resetAppState() {
 async function attemptScrapeName() {
     if (!state.currentFileId) return;
     UI.showLoading();
-    const url = `https://aistudio.google.com/app/prompts/${state.currentFileId}`;
+    const url = `https://drive.google.com/file/d/${state.currentFileId}`;
     try {
-        const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`;
+        const proxyUrl = getProxyUrl(url);
         const response = await fetch(proxyUrl);
         const html = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-const h1 = doc.querySelector('.toolbar-container h1') || doc.querySelector('h1');
-        let scrapedName = h1 ? h1.textContent.trim() : null;
+        let scrapedName = null;
 
-if (!scrapedName) {
-        const metaTitle = doc.querySelector('meta[property="og:title"]') || doc.querySelector('meta[name="twitter:title"]');
+        const metaTitle = doc.querySelector('meta[property="og:title"]');
         if (metaTitle) scrapedName = metaTitle.getAttribute('content');
-}
 
         if (!scrapedName && doc.title) {
             scrapedName = doc.title.replace(' - Google Drive', '').replace(' - Google AI Studio', '').trim();
