@@ -1,5 +1,5 @@
 /* global marked, DOMPurify, hljs */
-import { prefs, CODE_THEMES } from './settings.js';
+import { prefs, CODE_THEMES, DEFAULT_PROXY_TEMPLATE } from './settings.js';
 import { truncate, showToast, updateUrl, getUrl } from './utils.js';
 import { fetchProxyContent, fetchProxyBlob } from './drive.js';
 
@@ -164,6 +164,7 @@ export function initAllUI() {
         initNavUI();
         initCodeThemeUI();
         initTimeFormatUI();
+        initProxyUI();
         initModals();
     } catch (e) {
         console.error("Critical Initialization Error:", e);
@@ -575,6 +576,19 @@ function initTimeFormatUI() {
 
     document.addEventListener('click', (e) => {
         if (!wrapper.contains(e.target)) wrapper.classList.remove('open');
+    });
+}
+
+function initProxyUI() {
+    const input = document.getElementById('proxyInput');
+    if (!input) return;
+    input.value = prefs.proxyTemplate || DEFAULT_PROXY_TEMPLATE;
+    input.addEventListener('change', () => {
+        const val = input.value.trim();
+        if (val) {
+            prefs.proxyTemplate = val;
+            localStorage.setItem('proxyTemplate', val);
+        }
     });
 }
 

@@ -1,3 +1,5 @@
+import { getProxyUrl } from './settings.js';
+
 let abortController = null;
 
 export function fetchDriveFile(id, callbacks) {
@@ -7,8 +9,8 @@ export function fetchDriveFile(id, callbacks) {
     if (abortController) abortController.abort();
     abortController = new AbortController();
 
-    const originalUrl = `https://drive.google.com/uc?export=download&id=${id}`;
-    const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(originalUrl)}`;
+    const url = `https://drive.google.com/uc?export=download&id=${id}`;
+    const proxyUrl = getProxyUrl(url);
 
     fetch(proxyUrl, {
             signal: abortController.signal
@@ -33,7 +35,7 @@ export function fetchProxyBlob(url) {
     if (abortController) abortController.abort();
     abortController = new AbortController();
     
-    const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`;
+    const proxyUrl = getProxyUrl(url);
     
     return fetch(proxyUrl, { signal: abortController.signal })
         .then(res => {
@@ -46,7 +48,7 @@ export function fetchProxyContent(url, onSuccess, onError) {
     if (abortController) abortController.abort();
     abortController = new AbortController();
     
-    const proxyUrl = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`;
+    const proxyUrl = getProxyUrl(url);
     
     return fetch(proxyUrl, { signal: abortController.signal })
         .then(res => {

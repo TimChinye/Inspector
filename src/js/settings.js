@@ -1,3 +1,5 @@
+export const DEFAULT_PROXY_TEMPLATE = 'https://proxy.corsfix.com/?{url}';
+
 export const prefs = {
     openLastFileOnStartup: true,
     collapseThoughts: true,
@@ -8,8 +10,16 @@ export const prefs = {
     autoRestoreContent: true,
     contentWidth: 800,
     codeTheme: 'androidstudio',
-    timeFormat: 'default'
+    timeFormat: 'default',
+    proxyTemplate: DEFAULT_PROXY_TEMPLATE
 };
+
+export function getProxyUrl(rawUrl) {
+    const template = prefs.proxyTemplate || DEFAULT_PROXY_TEMPLATE;
+    return template
+        .replace('{encoded}', encodeURIComponent(rawUrl))
+        .replace('{url}', rawUrl);
+}
 
 export const CODE_THEMES = [
     { name: "Android Studio", value: "androidstudio" },
@@ -59,6 +69,11 @@ export function initPreferences() {
 
     const savedTimeFormat = localStorage.getItem('timeFormat');
     prefs.timeFormat = savedTimeFormat || 'default';
+
+    const savedProxy = localStorage.getItem('proxyTemplate');
+    if (savedProxy) {
+        prefs.proxyTemplate = savedProxy;
+    }
 
     // Apply basic CSS states based on prefs
     applyGlobalStyles();

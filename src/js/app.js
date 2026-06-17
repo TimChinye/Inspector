@@ -1,4 +1,4 @@
-import { initPreferences, prefs, setTheme } from './settings.js';
+import { initPreferences, prefs, setTheme, getProxyUrl } from './settings.js';
 import { initDB, saveFileToHistory, loadLastFileFromDB, clearRecentsInDB, togglePinInDB, fetchHistory, updateFileNameInDB, findFileByName, getFileById, getUniqueName, deleteFileFromDB, bulkDeleteFromDB, bulkPinInDB } from './db.js';
 import { fetchDriveFile, parseDriveLink, cancelFetch, fetchProxyBlob } from './drive.js';
 import { parseConversation, generateMetadataHTML, getCleanJSON, extractMedia } from './parser.js';
@@ -200,7 +200,7 @@ function loadFromDrive(id, startIndex = null, isSilent = false, fallbackText = n
             if (err.message === "Private File / HTML content") {
                 UI.showError("Access Denied", "This file appears to be private.", true, () => loadFromDrive(id, startIndex), id);
             } else {
-                UI.showError("Network Error", "Failed to fetch file. CodeTabs proxy might be down or blocked.", false, () => loadFromDrive(id, startIndex), id);
+                UI.showError("Network Error", "Failed to fetch file. The proxy might be down or blocked.", false, () => loadFromDrive(id, startIndex), id);
             }
         }
     });
@@ -379,13 +379,13 @@ async function attemptScrapeName() {
         const html = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        const h1 = doc.querySelector('.toolbar-container h1') || doc.querySelector('h1');
+const h1 = doc.querySelector('.toolbar-container h1') || doc.querySelector('h1');
         let scrapedName = h1 ? h1.textContent.trim() : null;
 
-        if (!scrapedName) {
-            const metaTitle = doc.querySelector('meta[property="og:title"]') || doc.querySelector('meta[name="twitter:title"]');
-            if (metaTitle) scrapedName = metaTitle.getAttribute('content');
-        }
+if (!scrapedName) {
+        const metaTitle = doc.querySelector('meta[property="og:title"]') || doc.querySelector('meta[name="twitter:title"]');
+        if (metaTitle) scrapedName = metaTitle.getAttribute('content');
+}
 
         if (!scrapedName && doc.title) {
             scrapedName = doc.title.replace(' - Google Drive', '').replace(' - Google AI Studio', '').trim();
@@ -412,7 +412,34 @@ async function attemptScrapeName() {
         }
     } catch (e) {
         console.error("Scrape failed", e);
-        showToast("Failed to scrape name", "error");
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <p style="margin-bottom:10px">Proxy failed. Enter a different proxy URL template:</p>
+            <input type="text" id="proxy-fallback-input"
+                style="width:100%;padding:8px;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-surface);color:var(--text-main);font-family:inherit;font-size:13px;box-sizing:border-box"
+                value="${prefs.proxyTemplate}"
+                placeholder="https://proxy.corsfix.com/?{url}">
+            <p style="margin-top:8px;font-size:11px;color:var(--text-muted)">Use <code>{url}</code> for raw URL, <code>{encoded}</code> for encoded URL</p>
+        `;
+        UI.showModal({
+            title: 'Proxy Error',
+            message: '',
+            headerColor: '#f59e0b',
+            iconClass: 'ph-fill ph-warning-circle',
+            extraContent: container,
+            primaryBtn: {
+                text: 'Save & Retry',
+                onClick: () => {
+                    const input = document.getElementById('proxy-fallback-input');
+                    if (input && input.value.trim()) {
+                        prefs.proxyTemplate = input.value.trim();
+                        localStorage.setItem('proxyTemplate', input.value.trim());
+                        attemptScrapeName();
+                    }
+                }
+            },
+            dismissBtn: { text: 'Cancel' }
+        });
     } finally {
         UI.hideLoading();
     }
